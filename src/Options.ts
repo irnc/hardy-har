@@ -14,10 +14,17 @@ export interface PopulatedOptions {
 	 * `chrome-har`, but is not recommended for other use.
 	 */
 	mimicChromeHar: boolean;
+	/**
+	 * If false, include requests with unsupported protocols in the HAR.
+	 * 
+	 * e.g. include blob: and data: requests in the HAR.
+	 */
+	ignoreRequestsWithUnsupportedProtocol: boolean,
 }
 export type Options = Partial<PopulatedOptions>;
 export const defaultOptions: PopulatedOptions = {
 	includeResourcesFromDiskCache: false,
 	includeTextFromResponseBody: false,
 	mimicChromeHar: false,
+	ignoreRequestsWithUnsupportedProtocol: true,
 } satisfies PopulatedOptions;

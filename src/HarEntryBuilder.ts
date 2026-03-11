@@ -116,7 +116,7 @@ export class HarEntryBuilder {
 		if (isCancelled){
 			 return false;
 		}
-		if (!this.isSupportedProtocol) {
+		if (!this.isSupportedProtocol && this.options.ignoreRequestsWithUnsupportedProtocol) {
 			return false;
 		}
 		if (!this.options.includeResourcesFromDiskCache) {
