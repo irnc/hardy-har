@@ -727,7 +727,7 @@ export class HarEntryBuilder {
 	 * The timestamp of when the request started
 	 */
 	get requestTimeInSeconds(): MonotonicTimeInSeconds {
-		return this.response.timing?.requestTime ?? (() => {throw new Error("timing not set");})(); //  ?? this.requestWillBeSentEvent.timestamp;
+		return this.response.timing?.requestTime ?? this.requestWillBeSentEvent.timestamp;
 	}
 
 	/**
