@@ -1,7 +1,8 @@
 import { HarBuilder } from "./HarBuilder.ts";
 export type * from "./Options.ts";
 export type * from "./types/DebuggerEvent.ts";
-export * from "./types/";
+export * from "./types/index.ts";
+export type * from "./types/index.ts";
 
 export type {Options} from "./Options.ts";
 
