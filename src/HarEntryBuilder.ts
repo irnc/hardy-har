@@ -109,8 +109,11 @@ export class HarEntryBuilder {
 	get isValidForInclusionInHarArchive(): boolean {
 		const hasNoRequest = this._requestWillBeSentEvent == null;
 		const hasNoResponse = this._response == null;
-		if (hasNoRequest || hasNoResponse){
+		if (hasNoRequest) {
 			 return false;
+		}
+		if (hasNoResponse && !this.options.includeFailedRequests) {
+			return false;
 		}
 		const isCancelled = this.loadingFailedEvent && (this.loadingFailedEvent.canceled && this.loadingFailedEvent.errorText !== 'net::ERR_ABORTED');
 		if (isCancelled){
@@ -207,6 +210,10 @@ export class HarEntryBuilder {
 	 * The request's HTTP version, derived from the response's protocol field.
 	 */
 	private get httpVersion(): string | undefined {
+		if (this.loadingFailedEvent) {
+			return undefined;
+		}
+
 		return this.response.protocol;
 	}
 
@@ -247,6 +254,10 @@ export class HarEntryBuilder {
 	 * header names are keys (property names) and values are property values.
 	 */
 	private get networkResponseHeadersObj() {
+		if (this.loadingFailedEvent) {
+			return {};
+		}
+
 		return this.responseReceivedExtraInfoEvent?.headers ?? this.response.headers;
 	}
 
@@ -390,7 +401,11 @@ export class HarEntryBuilder {
 			// That means we should place the earlier ones later in the below clause so they replace the later ones.
 			({...this.requestWillBeSentExtraInfoEvent?.headers, ...this.requestWillBeSentEvent.request.headers});
 		}
-		return { ...this.requestWillBeSentExtraInfoEvent?.headers, ...this.response.requestHeaders, ...this.request.headers};
+		return { 
+			...this.requestWillBeSentExtraInfoEvent?.headers, 
+			...(this.loadingFailedEvent ? undefined : this.response.requestHeaders), 
+			...this.request.headers
+		};
 	}
 
 	/**
@@ -435,7 +450,7 @@ export class HarEntryBuilder {
 	 * The size of the request headers, or -1 if it cannot be reliably calculated.
 	 */
 	private get requestHeadersSize() {
-		const {response, request, httpVersion} = this;
+		const {_response: response, request, httpVersion} = this;
 		if (response != null && response.requestHeadersText != null) {
 			return response.requestHeadersText.length;
 			// Chrome-har only allows calculating request size if http is version 1.x
@@ -711,8 +726,8 @@ export class HarEntryBuilder {
 	 * (With keep-alive and other features, the same connection may handle
 	 * many requests.)
 	 */
-	private get connection(): ConnectionIdString {
-		return this.response.connectionId.toString();
+	private get connection(): ConnectionIdString | undefined {
+		return this.loadingFailedEvent ? undefined : this.response.connectionId.toString();
 	}
 
 	/**
@@ -720,13 +735,17 @@ export class HarEntryBuilder {
 	 * used to calculate HAR timings.
 	 */
 	private get timing(): DevToolsProtocol.Network.ResourceTiming | undefined {
-		return this.response.timing;
+		return this._response?.timing;
 	}
 
 	/**
 	 * The timestamp of when the request started
 	 */
 	get requestTimeInSeconds(): MonotonicTimeInSeconds {
+		if (this._response == null) {
+			return this.requestWillBeSentEvent.timestamp;
+		}
+
 		return this.response.timing?.requestTime ?? this.requestWillBeSentEvent.timestamp;
 	}
 
@@ -806,7 +825,7 @@ export class HarEntryBuilder {
 		// all timestamps in seconds
 		// all fields of response.timing are in milliseconds
 
-		const timing = this.response.timing;
+		const timing = this._response?.timing;
 
 		// Per spec:
 		// > blocked [number, optional] - Time spent in a queue waiting for a network connection.
@@ -859,26 +878,25 @@ export class HarEntryBuilder {
 	 * The HAR entry.response object
 	 */
 	private get harResponse(): Har.Response {
-		const { response } = this;
 		const _transferSize = this.options.mimicChromeHar ?
 			(this.loadingFinishedEvent?.encodedDataLength ?? this.response.encodedDataLength) :
 			(this.responseEncodedDataLength ?? -1);
 //			(this.responseEncodedDataLength ?? (this.isHttp1x ? this.response.encodedDataLength :  -1));
 		return {
-			headersSize: this.responseHeadersSize,
+			headersSize: this.loadingFailedEvent ? -1 : this.responseHeadersSize,
 			httpVersion: this.httpVersion ?? '',
 			redirectURL: this.locationHeaderValue ?? '',
-			status: this.responseReceivedExtraInfoEvent?.statusCode ?? this.response.status,
-			statusText: response.statusText,
-			bodySize: this.responseBodySize,
-			content: this.responseContent,
+			status: this.loadingFailedEvent ? 0 : this.responseReceivedExtraInfoEvent?.statusCode ?? this.response.status,
+			statusText: this._response?.statusText ?? '',
+			bodySize: this.loadingFailedEvent ? -1 : this.responseBodySize,
+			content: this.loadingFailedEvent ? { "size": 0, "mimeType": "x-unknown" } : this.responseContent,
 			cookies: this.responseCookies ?? [],
 			headers: this.responseHarHeaders,
 			_transferSize,
-			fromDiskCache: this.response.fromDiskCache ?? false,
-			fromEarlyHints: this.response.fromEarlyHints ?? false,
-			fromServiceWorker: this.response.fromServiceWorker ?? false,
-			fromPrefetchCache: this.response.fromPrefetchCache ?? false,
+			fromDiskCache: this._response?.fromDiskCache ?? false,
+			fromEarlyHints: this._response?.fromEarlyHints ?? false,
+			fromServiceWorker: this._response?.fromServiceWorker ?? false,
+			fromPrefetchCache: this._response?.fromPrefetchCache ?? false,
 		} as const satisfies Har.Response;
 	}
 
@@ -903,7 +921,7 @@ export class HarEntryBuilder {
 			startedDateTime: this.startedDateTime,
 			connection: this.connection,
 			time: this.time,
-			serverIPAddress: this.serverIPAddress,
+			serverIPAddress: this.loadingFailedEvent ? "" : this.serverIPAddress,
 			_requestId: this.requestId,
 			_initialPriority: this._initialPriority,
 			_priority: this._priority,

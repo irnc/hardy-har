@@ -20,6 +20,10 @@ export interface PopulatedOptions {
 	 * e.g. include blob: and data: requests in the HAR.
 	 */
 	ignoreRequestsWithUnsupportedProtocol: boolean,
+	/**
+	 * If true, include entries for failed requests in the HAR.
+	 */
+	includeFailedRequests: boolean,
 }
 export type Options = Partial<PopulatedOptions>;
 export const defaultOptions: PopulatedOptions = {
@@ -27,4 +31,5 @@ export const defaultOptions: PopulatedOptions = {
 	includeTextFromResponseBody: false,
 	mimicChromeHar: false,
 	ignoreRequestsWithUnsupportedProtocol: true,
+	includeFailedRequests: false
 } satisfies PopulatedOptions;

@@ -405,7 +405,7 @@ export interface Entry {
 	readonly timings: Timings;
 	readonly cache: Cache;
 	readonly startedDateTime: ISODateTimeString,
-	readonly connection: string,
+	readonly connection?: string,
 	readonly time: Milliseconds,
 	readonly serverIPAddress?: string,
 	readonly _requestId: string;
