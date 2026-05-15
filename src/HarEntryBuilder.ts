@@ -182,6 +182,13 @@ export class HarEntryBuilder {
 	}
 
 	/**
+	 * Check that loading failed or response not received yet (i.e. pending)
+	 */
+	private get loadingFailedOrPending() {
+		return this.loadingFailedEvent || this._response === undefined;
+	}
+
+	/**
 	 * The response to this network request, if it exists, which may come from a
 	 * responseReceivedEvent or a subsequent requestWillBeSent event's
 	 * redirectResponse field.
@@ -210,7 +217,7 @@ export class HarEntryBuilder {
 	 * The request's HTTP version, derived from the response's protocol field.
 	 */
 	private get httpVersion(): string | undefined {
-		if (this.loadingFailedEvent) {
+		if (this.loadingFailedOrPending) {
 			return undefined;
 		}
 
@@ -254,7 +261,7 @@ export class HarEntryBuilder {
 	 * header names are keys (property names) and values are property values.
 	 */
 	private get networkResponseHeadersObj() {
-		if (this.loadingFailedEvent) {
+		if (this.loadingFailedOrPending) {
 			return {};
 		}
 
@@ -403,7 +410,7 @@ export class HarEntryBuilder {
 		}
 		return { 
 			...this.requestWillBeSentExtraInfoEvent?.headers, 
-			...(this.loadingFailedEvent ? undefined : this.response.requestHeaders), 
+			...(this.loadingFailedOrPending ? undefined : this.response.requestHeaders), 
 			...this.request.headers
 		};
 	}
@@ -727,7 +734,7 @@ export class HarEntryBuilder {
 	 * many requests.)
 	 */
 	private get connection(): ConnectionIdString | undefined {
-		return this.loadingFailedEvent ? undefined : this.response.connectionId.toString();
+		return this.loadingFailedOrPending ? undefined : this.response.connectionId.toString();
 	}
 
 	/**
@@ -883,13 +890,13 @@ export class HarEntryBuilder {
 			(this.responseEncodedDataLength ?? -1);
 //			(this.responseEncodedDataLength ?? (this.isHttp1x ? this.response.encodedDataLength :  -1));
 		return {
-			headersSize: this.loadingFailedEvent ? -1 : this.responseHeadersSize,
+			headersSize: this.loadingFailedOrPending ? -1 : this.responseHeadersSize,
 			httpVersion: this.httpVersion ?? '',
 			redirectURL: this.locationHeaderValue ?? '',
-			status: this.loadingFailedEvent ? 0 : this.responseReceivedExtraInfoEvent?.statusCode ?? this.response.status,
+			status: this.loadingFailedOrPending ? 0 : this.responseReceivedExtraInfoEvent?.statusCode ?? this.response.status,
 			statusText: this._response?.statusText ?? '',
-			bodySize: this.loadingFailedEvent ? -1 : this.responseBodySize,
-			content: this.loadingFailedEvent ? { "size": 0, "mimeType": "x-unknown" } : this.responseContent,
+			bodySize: this.loadingFailedOrPending ? -1 : this.responseBodySize,
+			content: this.loadingFailedOrPending ? { "size": 0, "mimeType": "x-unknown" } : this.responseContent,
 			cookies: this.responseCookies ?? [],
 			headers: this.responseHarHeaders,
 			_transferSize,
@@ -921,7 +928,7 @@ export class HarEntryBuilder {
 			startedDateTime: this.startedDateTime,
 			connection: this.connection,
 			time: this.time,
-			serverIPAddress: this.loadingFailedEvent ? "" : this.serverIPAddress,
+			serverIPAddress: this.loadingFailedOrPending ? "" : this.serverIPAddress,
 			_requestId: this.requestId,
 			_initialPriority: this._initialPriority,
 			_priority: this._priority,
